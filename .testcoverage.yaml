@@ -1,0 +1,5 @@
+profile: cover.out
+local-prefix: "github.com/delta-a-sierra/chatter"
+
+threshold:
+  total: 90

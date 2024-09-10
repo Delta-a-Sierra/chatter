@@ -1,0 +1,117 @@
+name: pull-request-checks
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linter:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.58
+  test:
+    name: unit tests
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 1
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: download dependencies
+        run: go mod tidy
+
+      - name: run unit tests
+        run: go test ./...
+
+  test-race:
+    name: unit tests
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 1
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: download dependencies
+        run: go mod tidy
+
+      - name: run unit tests
+        run: go test ./... --race
+
+  code-coverage:
+    name: code-coverage
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: download dependencies
+        run: go mod tidy
+
+      - name: generate test coverage
+        run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+
+      - name: check test coverage
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          config: ./.testcoverage.yaml
+
+  build:
+    name: build binary
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: download dependencies
+        run: go mod tidy
+
+      - name: run unit tests
+        run: go build -o build ./cmd/.

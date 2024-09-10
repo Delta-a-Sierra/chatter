@@ -1,0 +1,90 @@
+name: pull-request-checks
+on:
+  push:
+    branches:
+      - "*"
+      - "!master" # excludes master
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linter:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.58
+  test:
+    name: unit tests
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 1
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: download dependencies
+        run: go mod tidy
+
+      - name: run unit tests
+        run: go test ./...
+
+  test-race:
+    name: unit tests
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 1
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: download dependencies
+        run: go mod tidy
+
+      - name: run unit tests
+        run: go test ./... --race
+
+  build:
+    name: build binary
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+      GOPRIVATE: github.com/mothergroup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: download dependencies
+        run: go mod tidy
+
+      - name: run unit tests
+        run: go build -o build ./cmd/.
