@@ -86,6 +86,12 @@ func Test_Password_Validate_multi(t *testing.T) {
 	}
 }
 
+func Test_Password_ToString(t *testing.T) {
+	assert.Equal(t, "", valueobjects.Password("").ToString())
+
+	assert.Equal(t, "Passw0rdx!", valueobjects.Password("Passw0rdx!").ToString())
+}
+
 func Test_Password_Encrypt(t *testing.T) {
 	type testcase struct {
 		err      error
