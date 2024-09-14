@@ -10,81 +10,154 @@ import (
 
 func Test_Password_Validate(t *testing.T) {
 	type testcase struct {
-		Err      error
-		Password valueobjects.Password
+		err      error
+		password valueobjects.Password
 	}
 	tests := map[string]testcase{
 		"sad - test short password returns length error": {
-			Err:      valueobjects.ErrPasswordTooShort,
-			Password: "a1A",
+			err:      valueobjects.ErrPasswordTooShort,
+			password: "a1A",
 		},
 		"sad - test empty password returns length error": {
-			Err:      valueobjects.ErrPasswordTooShort,
-			Password: "",
+			err:      valueobjects.ErrPasswordTooShort,
+			password: "",
 		},
 		"happy - test valid password returns nil": {
-			Err:      nil,
-			Password: "Passw0rd!",
+			err:      nil,
+			password: "Passw0rd!",
 		},
 		"sad - test password with no upper returns ErrPasswordDoesntContainUpper": {
-			Err:      valueobjects.ErrPasswordDoesntContainUpper,
-			Password: "passw0rd!",
+			err:      valueobjects.ErrPasswordDoesntContainUpper,
+			password: "passw0rd!",
 		},
 		"sad - test valid password with no lowercase returns ErrPasswordDoesntContainLower": {
-			Err:      valueobjects.ErrPasswordDoesntContainLower,
-			Password: "PASSW0RD!",
+			err:      valueobjects.ErrPasswordDoesntContainLower,
+			password: "PASSW0RD!",
 		},
 		"sad - test password with no number returns ErrPasswordDoesntContainNumber": {
-			Err:      valueobjects.ErrPasswordDoesntContainNumber,
-			Password: "Password!",
+			err:      valueobjects.ErrPasswordDoesntContainNumber,
+			password: "Password!",
 		},
 		"sad - test password with with too many chars returns ErrPasswordTooLong": {
-			Err:      valueobjects.ErrPasswordTooLong,
-			Password: "Password!123456789123456789",
+			err:      valueobjects.ErrPasswordTooLong,
+			password: "Password!123456789123456789",
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Log(test.Password.Validate())
-			assert.ErrorIs(t, test.Password.Validate(), test.Err)
+			t.Log(test.password.Validate())
+			assert.ErrorIs(t, test.password.Validate(), test.err)
 		})
 	}
 }
 
 func Test_Password_Validate_multi(t *testing.T) {
 	type testcase struct {
-		Err      error
-		Password valueobjects.Password
+		err      error
+		password valueobjects.Password
 	}
 	tests := map[string]testcase{
 		"sad - test all errors are combined and output with short passwords": {
-			Err: errors.Join(
+			err: errors.Join(
 				valueobjects.ErrPasswordTooShort,
 				valueobjects.ErrPasswordDoesntContainUpper,
 				valueobjects.ErrPasswordDoesntContainLower,
 				valueobjects.ErrPasswordDoesntContainNumber,
 			),
-			Password: "",
+			password: "",
 		},
 		"sad - test all errors are combined and ouput with long passwords": {
-			Err: errors.Join(
+			err: errors.Join(
 				valueobjects.ErrPasswordTooLong,
 				valueobjects.ErrPasswordDoesntContainUpper,
 				valueobjects.ErrPasswordDoesntContainLower,
 				valueobjects.ErrPasswordDoesntContainNumber,
 			),
-			Password: "..................................",
+			password: "..................................",
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Log(test.Password.Validate())
-			assert.ErrorContains(t, test.Password.Validate(), test.Err.Error())
+			t.Log(test.password.Validate())
+			assert.ErrorContains(t, test.password.Validate(), test.err.Error())
 		})
 	}
 }
 
 func Test_Password_Encrypt(t *testing.T) {
+	type testcase struct {
+		err      error
+		password valueobjects.Password
+	}
+	tests := map[string]testcase{
+		"sad - test that invalid short password returns correct validation error": {
+			password: "",
+			err:      valueobjects.ErrPasswordTooShort,
+		},
+		"sad - test that invalid long password returns correct validation error": {
+			password: "Passw0rd1xxxxxxxxxxxxxxxxxxxxxxx",
+			err:      valueobjects.ErrPasswordTooLong,
+		},
+		"sad - test that invalid no upper password returns correct validation error": {
+			password: "passw0rd1!",
+			err:      valueobjects.ErrPasswordDoesntContainUpper,
+		},
+		"sad - test that invalid no lower password contains correct validation error": {
+			password: "PASSW0RD1!",
+			err:      valueobjects.ErrPasswordDoesntContainLower,
+		},
+		"sad - test that invalid no number password contains correct validation error": {
+			password: "Passwordx!",
+			err:      valueobjects.ErrPasswordDoesntContainNumber,
+		},
+		"happy - test that valid password is Encrypted successfully": {
+			password: "Passw0rd1x",
+			err:      nil,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			prevPassword := test.password
+			err := test.password.Encrypt()
+			assert.ErrorIs(t, err, test.err)
+			if err == nil {
+				assert.NotEqual(t, prevPassword, test.password)
+			}
+		})
+	}
+}
+
+func Test_Password_Compare(t *testing.T) {
+	type testcase struct {
+		password valueobjects.Password
+		encrypt  bool
+		isMatch  bool
+	}
+	tests := map[string]testcase{
+		"happy - test plain passwords return correct true false values": {
+			password: "password",
+			isMatch:  true,
+		},
+		"happy - test encrypted passwords return correct true false values  ": {
+			password: "Passw0rd1x",
+			isMatch:  true,
+			encrypt:  true,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			prev := test.password
+			if test.encrypt {
+				if err := test.password.Encrypt(); err != nil {
+					t.Fatal("failed encrypt password", err)
+				}
+			}
+			assert.Equal(t, test.isMatch, test.password.Compare(prev))
+			assert.NotEqual(t, test.isMatch, test.password.Compare(prev+"xyhz"))
+		})
+	}
 }

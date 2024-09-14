@@ -3,7 +3,9 @@ package valueobjects
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -11,9 +13,12 @@ import (
 type Password string
 
 func (p *Password) Encrypt() error {
-	password, err := bcrypt.GenerateFromPassword([]byte(*p), 72)
+	if err := p.Validate(); err != nil {
+		return fmt.Errorf("Password.Validate: %w", err)
+	}
+	password, err := bcrypt.GenerateFromPassword([]byte(*p), 12)
 	if err != nil {
-		return fmt.Errorf("bcrypt.GenerateFromPassword: failed to generate encrypted password, error = %w", err)
+		return fmt.Errorf("bcrypt.GenerateFromPassword: %w", err)
 	}
 	*p = Password(password)
 	return nil
@@ -45,7 +50,12 @@ var (
 	ErrPasswordDoesntContainNumber = errors.New("password doesn't have at least 1 number character")
 )
 
+func timeTrack(start time.Time, name string) {
+	slog.Info("time taken for operation to complete", "operation", name, "elapsed", time.Since(start))
+}
+
 func (p Password) Validate() error {
+	defer timeTrack(time.Now(), "password_validate")
 	var err error
 	if len(p) > maxCharLength {
 		err = errors.Join(err, ErrPasswordTooLong)
